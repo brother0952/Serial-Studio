@@ -45,3 +45,7 @@ Temporary Items
 # Clion
 .idea/*
 cmake-build-*
+
+
+deploy/*
+
