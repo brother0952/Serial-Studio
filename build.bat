@@ -1,7 +1,7 @@
 @echo off
 :: 设置 MinGW 和 Qt 环境
 set "QT_DIR=D:\Qt6\6.8.1\mingw_64"
-set "MINGW_DIR=%QT_DIR%\..\..\Tools\mingw1120_64"
+set "MINGW_DIR=D:\Qt6\Tools\mingw1310_64"
 set "CMAKE_PREFIX_PATH=%QT_DIR%\lib\cmake"
 set "PATH=%MINGW_DIR%\bin;%QT_DIR%\bin;%PATH%"
 

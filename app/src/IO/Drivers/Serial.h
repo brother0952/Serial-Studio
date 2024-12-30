@@ -125,11 +125,13 @@ public:
   static Serial &instance();
 
   void close() override;
+  bool connectDevice();
 
   [[nodiscard]] bool isOpen() const override;
   [[nodiscard]] bool isReadable() const override;
   [[nodiscard]] bool isWritable() const override;
   [[nodiscard]] bool configurationOk() const override;
+  [[nodiscard]] bool isAvailable() const;
   [[nodiscard]] quint64 write(const QByteArray &data) override;
   [[nodiscard]] bool open(const QIODevice::OpenMode mode) override;
 
@@ -158,6 +160,8 @@ public:
   [[nodiscard]] QSerialPort::StopBits stopBits() const;
   [[nodiscard]] QSerialPort::FlowControl flowControl() const;
 
+  [[nodiscard]] QString portName() const;
+
 public slots:
   void disconnectDevice();
   void setupExternalConnections();
@@ -182,6 +186,12 @@ private slots:
 
 private:
   QVector<QSerialPortInfo> validPorts() const;
+
+  /**
+   * @brief 设置串口连接
+   * 尝试以非管理员权限打开串口，如果失败则提示用户
+   */
+  void setupPort();
 
 private:
   QSerialPort *m_port;

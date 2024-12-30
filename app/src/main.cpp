@@ -26,9 +26,11 @@
 #include <QQuickStyle>
 #include <QApplication>
 #include <QStyleFactory>
+#include <QMessageBox>
 
 #include "AppInfo.h"
 #include "Misc/ModuleManager.h"
+#include "SerialStudio.h"
 
 #ifdef Q_OS_WIN
 #  include <windows.h>

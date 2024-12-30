@@ -22,8 +22,25 @@
 
 #pragma once
 
+// Qt headers must be included first for Q_OS_WIN macro
 #include <QObject>
 #include <QVector>
+
+// Windows API headers must be included first
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#define SECURITY_WIN32
+#include <windows.h>
+#include <sddl.h>
+#include <security.h>
+#endif
+
+#ifdef Q_OS_UNIX
+#include <unistd.h>
+#endif
 
 #include "JSON/Group.h"
 #include "JSON/Dataset.h"
@@ -305,4 +322,24 @@ public:
   // Utility functions
   //
   [[nodiscard]] static QString getDatasetColor(const int index);
+
+  static bool isRunningAsAdmin() {
+    #ifdef Q_OS_WIN
+        BOOL isAdmin = FALSE;
+        PSID adminGroup;
+        SID_IDENTIFIER_AUTHORITY ntAuthority = SECURITY_NT_AUTHORITY;
+        
+        if (AllocateAndInitializeSid(&ntAuthority, 2,
+            SECURITY_BUILTIN_DOMAIN_RID,
+            DOMAIN_ALIAS_RID_ADMINS,
+            0, 0, 0, 0, 0, 0,
+            &adminGroup)) {
+            CheckTokenMembership(NULL, adminGroup, &isAdmin);
+            FreeSid(adminGroup);
+        }
+        return isAdmin;
+    #else
+        return geteuid() == 0;
+    #endif
+  }
 };

@@ -27,6 +27,10 @@
 #include "Misc/Translator.h"
 #include "Misc/TimerEvents.h"
 
+#ifdef Q_OS_WIN
+#include <Windows.h>
+#endif
+
 //------------------------------------------------------------------------------
 // Constructor/destructor & singleton access functions
 //------------------------------------------------------------------------------
@@ -225,8 +229,13 @@ bool IO::Drivers::Serial::open(const QIODevice::OpenMode mode)
     // Display error
     else
     {
+      QString errorMessage = port()->errorString();
+      if (port()->error() == QSerialPort::PermissionError) {
+          errorMessage = tr("Access denied to port %1. Try running the application with appropriate permissions, "
+                          "or select a different port that is accessible to the current user.").arg(name);
+      }
       Misc::Utilities::showMessageBox(
-          tr("Failed to connect to serial port device"), port()->errorString());
+          tr("Failed to connect to serial port device"), errorMessage);
     }
   }
 
@@ -522,12 +531,11 @@ void IO::Drivers::Serial::setDtrEnabled(const bool enabled)
  */
 void IO::Drivers::Serial::setPortIndex(const quint8 portIndex)
 {
-  if (portIndex >= 0 && portIndex < portList().count())
+  if (portIndex < portList().count())
+  {
     m_portIndex = portIndex;
-  else
-    m_portIndex = 0;
-
-  Q_EMIT portIndexChanged();
+    emit portIndexChanged();
+  }
 }
 
 /**
@@ -978,4 +986,72 @@ QVector<QSerialPortInfo> IO::Drivers::Serial::validPorts() const
 
   // Return list
   return ports;
+}
+
+void IO::Drivers::Serial::setupPort()
+{
+#ifdef Q_OS_WIN
+  // 尝试以非管理员权限打开串口
+  m_port->setPortName(portName());
+  if (!m_port->open(QIODevice::ReadWrite)) {
+    // 如果打开失败，提示用户
+    QString message = tr("Failed to open port %1. You may need to run the application "
+                       "as administrator to access certain COM ports.").arg(portName());
+    Misc::Utilities::showMessageBox(tr("Port Access Error"), message);
+    return;
+  }
+#else
+  m_port->setPortName(portName());
+  m_port->open(QIODevice::ReadWrite);
+#endif
+
+  // 设置串口参数
+  m_port->setBaudRate(baudRate());
+  m_port->setDataBits(dataBits());
+  m_port->setParity(parity());
+  m_port->setStopBits(stopBits());
+  m_port->setFlowControl(flowControl());
+
+  // 设置 DTR 引脚状态
+  if (m_dtrEnabled)
+    m_port->setDataTerminalReady(true);
+}
+
+bool IO::Drivers::Serial::connectDevice()
+{
+    // 验证端口是否可用
+    if (!isAvailable())
+        return false;
+
+    // 设置串口
+    setupPort();
+
+    // 连接信号槽
+    if (port())
+    {
+        connect(port(), &QSerialPort::readyRead, this,
+                &Serial::onReadyRead, Qt::UniqueConnection);
+        connect(port(), &QSerialPort::errorOccurred, this,
+                &Serial::handleError, Qt::UniqueConnection);
+    }
+
+    // 返回连接状态
+    return isOpen();
+}
+
+QString IO::Drivers::Serial::portName() const
+{
+  if (m_port)
+    return m_port->portName();
+  
+  auto ports = validPorts();
+  if (m_portIndex < ports.count())
+    return ports.at(m_portIndex).portName();
+  
+  return QString();
+}
+
+bool IO::Drivers::Serial::isAvailable() const
+{
+  return !portName().isEmpty();
 }
